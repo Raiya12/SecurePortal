@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome Dashboard</title>
+    <style>
+        /* Base Styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        /* Layout Components */
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        /* Card Styles */
+        .feature-card, .user-info {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .feature-card {
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Button Styles */
+        .logout-btn, .upload-btn {
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+        }
+
+        .logout-btn {
+            background-color: #dc3545;
+        }
+
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+
+        .upload-btn {
+            background-color: #28a745;
+            margin-top: 10px;
+        }
+
+        .upload-btn:hover {
+            background-color: #218838;
+        }
+
+        /* PDF Related Styles */
+        .pdf-list {
+            margin-top: 15px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .pdf-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            background-color: #f8f9fa;
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+
+        .pdf-content {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .file-details {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85em;
+            color: #6c757d;
+        }
+
+        /* User Files Section */
+        .user-files-section {
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .user-files-header {
+            background-color: #f8f9fa;
+            padding: 10px 15px;
+            margin: 0;
+            border-bottom: 1px solid #dee2e6;
+            color: #495057;
+        }
+
+        /* File Type Indicators */
+        .admin-file {
+            background-color: #e7f5ff;
+            border-left: 4px solid #007bff;
+        }
+
+        .user-file {
+            background-color: #fff;
+            border-left: 4px solid #28a745;
+        }
+
+        /* Miscellaneous */
+        .feature-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .welcome-message {
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .role-badge {
+            background-color: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 14px;
+            text-transform: uppercase;
+            margin-left: 10px;
+        }
+
+        .no-files {
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        #pdf-file {
+            display: block;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <div class="welcome-message">Welcome, <span id="user-name">User</span>!</div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="user-info">
+            <h2>Your Profile</h2>
+            <p>Email: <span id="user-email"></span></p>
+            <p>Last Login: <span id="last-login"></span></p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📂</div>
+                <h3>View Documents</h3>
+                <p>View previously uploaded PDF files</p>
+                <div id="pdf-list" class="pdf-list">
+                    <!-- PDF files will be listed here -->
+                    <p class="no-files">No PDF files uploaded yet</p>
+                </div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⬆️</div>
+                <h3>Upload Document</h3>
+                <p>Upload new PDF document</p>
+                <form id="upload-form" class="upload-form">
+                    <input type="file" id="pdf-file" accept=".pdf" required>
+                    <button type="submit" class="upload-btn">Upload PDF</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check if user is logged in
+        window.onload = function() {
+            const currentUser = localStorage.getItem('currentUser');
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const user = JSON.parse(currentUser);
+            document.getElementById('user-name').textContent = user.username;
+            document.getElementById('user-email').textContent = user.email;
+            document.getElementById('last-login').textContent = new Date().toLocaleString();
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            window.location.href = 'login.html';
+        }
+
+        // Handle file upload
+        document.getElementById('upload-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('pdf-file');
+            const file = fileInput.files[0];
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            if (file && file.type === 'application/pdf') {
+                const existingFiles = JSON.parse(localStorage.getItem('uploadedPDFs') || '[]');
+                
+                // Add new file with user information
+                existingFiles.push({
+                    name: file.name,
+                    size: file.size,
+                    uploadDate: new Date().toISOString(),
+                    uploadedBy: currentUser.username,
+                    userRole: currentUser.role
+                });
+
+                localStorage.setItem('uploadedPDFs', JSON.stringify(existingFiles));
+                
+                fileInput.value = '';
+                updatePDFList();
+                alert('PDF uploaded successfully!');
+            } else {
+                alert('Please select a valid PDF file.');
+            }
+        });
+
+        // Function to update PDF list
+        function updatePDFList() {
+            const pdfList = document.getElementById('pdf-list');
+            const files = JSON.parse(localStorage.getItem('uploadedPDFs') || '[]');
+            const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Filter files based on user role
+            const filesToShow = currentUser.role === 'admin' 
+                ? files // Show all files for admin
+                : files.filter(file => file.uploadedBy === currentUser.username); // Show only user's files
+
+            if (filesToShow.length === 0) {
+                pdfList.innerHTML = '<p class="no-files">No PDF files uploaded yet</p>';
+                return;
+            }
+
+            // Update welcome message with role
+            const welcomeMessage = document.querySelector('.welcome-message');
+            welcomeMessage.innerHTML = `
+                Welcome, ${currentUser.username} 
+                <span class="role-badge">${currentUser.role}</span>
+            `;
+
+            // Generate file list with different views for admin and regular users
+            if (currentUser.role === 'admin') {
+                // Admin view - group files by user
+                const filesByUser = files.reduce((acc, file) => {
+                    if (!acc[file.uploadedBy]) {
+                        acc[file.uploadedBy] = [];
+                    }
+                    acc[file.uploadedBy].push(file);
+                    return acc;
+                }, {});
+
+                pdfList.innerHTML = Object.entries(filesByUser).map(([username, userFiles]) => `
+                    <div class="user-files-section">
+                        <h4 class="user-files-header">Files uploaded by ${username}</h4>
+                        ${userFiles.map(file => `
+                            <div class="pdf-item ${username === currentUser.username ? 'admin-file' : 'user-file'}">
+                                <div class="pdf-content">
+                                    <strong>${file.name}</strong>
+                                    <div class="file-details">
+                                        <span class="upload-date">Uploaded on: ${new Date(file.uploadDate).toLocaleString()}</span>
+                                        <span class="file-size">Size: ${formatFileSize(file.size)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `).join('');
+            } else {
+                // Regular user view
+                pdfList.innerHTML = filesToShow.map(file => `
+                    <div class="pdf-item">
+                        <div class="pdf-content">
+                            <strong>${file.name}</strong>
+                            <div class="file-details">
+                                <span class="upload-date">Uploaded on: ${new Date(file.uploadDate).toLocaleString()}</span>
+                                <span class="file-size">Size: ${formatFileSize(file.size)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Add this helper function for file size formatting
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Call updatePDFList when page loads
+        window.addEventListener('load', function() {
+            updatePDFList();
+        });
+    </script>
+</body>
+</html>
