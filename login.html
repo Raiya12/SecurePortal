@@ -21,8 +21,8 @@
             </div>
             <form id="login-form">
                 <div class="form-group">
-                    <label for="username">Email</label>
-                    <input type="email" id="username" name="username" required>
+                    <label for="username">Username or Email</label>
+                    <input type="text" id="username" name="username" required>
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
@@ -31,12 +31,10 @@
                         <button type="button" class="toggle-password">👁️</button>
                     </div>
                 </div>
-                <div class="form-group">
-                    <div id="recaptcha-container" style="display: none;">
-                        <div class="g-recaptcha" 
-                             data-sitekey="YOUR_SITE_KEY" 
-                             data-callback="onCaptchaSuccess">
-                        </div>
+                <div id="recaptcha-container" style="display: none;">
+                    <div class="g-recaptcha" 
+                         data-sitekey="YOUR_SITE_KEY" 
+                         data-callback="onCaptchaSuccess">
                     </div>
                 </div>
                 <button type="submit" class="btn">Login</button>

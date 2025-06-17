@@ -3,6 +3,9 @@
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 3 * 60 * 1000; // 3 minutes in milliseconds
 const CAPTCHA_THRESHOLD = 3; // Show CAPTCHA after 3 failed attempts
+const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+let inactivityTimer;
 
 document.addEventListener('DOMContentLoaded', function() {
     // Get all forms and sections
@@ -318,6 +321,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add captcha validation function
     function validateCaptcha() {
+        if (typeof grecaptcha === 'undefined') {
+            console.warn('reCAPTCHA not loaded');
+            return true; // Allow login if CAPTCHA isn't loaded
+        }
         const response = grecaptcha.getResponse();
         if (response.length === 0) {
             showError(document.getElementById('username'), 'Please complete the CAPTCHA');
@@ -334,4 +341,74 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize
     checkAuthStatus();
+
+    // Add these functions inside the DOMContentLoaded listener
+    window.onload = function() {
+        const currentUser = localStorage.getItem('currentUser');
+        if (!currentUser) {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        // Check if we're on the index page
+        if (document.getElementById('user-name')) {
+            const user = JSON.parse(currentUser);
+            document.getElementById('user-name').textContent = user.username;
+            document.getElementById('user-email').textContent = user.email;
+            document.getElementById('last-login').textContent = new Date().toLocaleString();
+
+            // Setup inactivity check
+            setupInactivityCheck();
+        }
+    }
+
+    function logout() {
+        // Clear all session data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('lastActivity');
+        clearTimeout(inactivityTimer);
+        
+        // Redirect to login page
+        window.location.href = 'login.html';
+    }
+
+    // Call window.onload immediately
+    window.onload();
 });
+
+// Add this function after the existing helper functions
+function setupInactivityCheck() {
+    // Reset timer on any user activity
+    const resetTimer = () => {
+        clearTimeout(inactivityTimer);
+        // Store last activity timestamp
+        localStorage.setItem('lastActivity', new Date().getTime());
+        
+        inactivityTimer = setTimeout(() => {
+            logout();
+        }, INACTIVITY_TIMEOUT);
+    };
+
+    // Check if user should be logged out due to inactivity
+    const checkInactivity = () => {
+        const lastActivity = parseInt(localStorage.getItem('lastActivity'));
+        if (lastActivity && (new Date().getTime() - lastActivity > INACTIVITY_TIMEOUT)) {
+            logout();
+        } else {
+            resetTimer();
+        }
+    };
+
+    // Add event listeners for user activity
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(event => {
+        document.addEventListener(event, resetTimer, true);
+    });
+
+    // Initial setup
+    resetTimer();
+
+    // Check inactivity on page load
+    checkInactivity();
+}
