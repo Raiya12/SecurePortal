@@ -2,6 +2,7 @@
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 3 * 60 * 1000; // 3 minutes in milliseconds
+const CAPTCHA_THRESHOLD = 3; // Show CAPTCHA after 3 failed attempts
 
 document.addEventListener('DOMContentLoaded', function() {
     // Get all forms and sections
@@ -96,6 +97,16 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         
         const username = this.username.value;
+        const rateData = getRateLimitData(username);
+
+        // Check if CAPTCHA is required
+        if (rateData.attempts >= CAPTCHA_THRESHOLD) {
+            document.getElementById('recaptcha-container').style.display = 'block';
+            if (!validateCaptcha()) {
+                return;
+            }
+        }
+
         const section = this.closest('.auth-section');
         const role = section.querySelector('.role-btn.active')?.dataset.role;
 
@@ -124,7 +135,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (!user) {
                 // Handle failed login attempt
-                const rateData = getRateLimitData(username);
                 rateData.attempts += 1;
 
                 if (rateData.attempts >= MAX_LOGIN_ATTEMPTS) {
@@ -137,13 +147,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
+                // Show CAPTCHA after threshold
+                if (rateData.attempts >= CAPTCHA_THRESHOLD) {
+                    document.getElementById('recaptcha-container').style.display = 'block';
+                    rateData.requiresCaptcha = true;
+                }
+
                 updateRateLimitData(username, rateData);
                 const remainingAttempts = MAX_LOGIN_ATTEMPTS - rateData.attempts;
                 throw new Error(`Invalid credentials. ${remainingAttempts} attempts remaining.`);
             }
 
-            // Successful login - reset rate limiting data
-            updateRateLimitData(username, { attempts: 0, lockoutUntil: null });
+            // Successful login
+            rateData.attempts = 0;
+            rateData.requiresCaptcha = false;
+            updateRateLimitData(username, rateData);
+            
+            // Reset CAPTCHA
+            document.getElementById('recaptcha-container').style.display = 'none';
+            if (typeof grecaptcha !== 'undefined') {
+                grecaptcha.reset();
+            }
 
             // Store user data in localStorage
             localStorage.setItem('currentUser', JSON.stringify({
@@ -271,7 +295,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function getRateLimitData(username) {
         const rateLimitData = JSON.parse(localStorage.getItem('rateLimitData') || '{}');
-        return rateLimitData[username] || { attempts: 0, lockoutUntil: null };
+        return rateLimitData[username] || { attempts: 0, lockoutUntil: null, requiresCaptcha: false };
     }
 
     function updateRateLimitData(username, data) {
@@ -291,6 +315,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return { locked: false };
     }
+
+    // Add captcha validation function
+    function validateCaptcha() {
+        const response = grecaptcha.getResponse();
+        if (response.length === 0) {
+            showError(document.getElementById('username'), 'Please complete the CAPTCHA');
+            return false;
+        }
+        return true;
+    }
+
+    // Add captcha success callback
+    window.onCaptchaSuccess = function() {
+        // Enable login button when CAPTCHA is solved
+        document.querySelector('#login-form button[type="submit"]').disabled = false;
+    };
 
     // Initialize
     checkAuthStatus();

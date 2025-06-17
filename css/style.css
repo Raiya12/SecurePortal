@@ -185,7 +185,11 @@ button.btn:disabled {
     .auth-container {
         width: 90%;
     }
+    .g-recaptcha {
+        transform: scale(0.85);
+    }
 }
+
 .rate-limit-warning {
     color: #856404;
     background-color: #fff3cd;
@@ -201,4 +205,15 @@ button.btn:disabled {
     border-color: #f5c6cb;
     color: #721c24;
     font-weight: bold;
+}
+
+#recaptcha-container {
+    margin: 15px 0;
+    display: flex;
+    justify-content: center;
+}
+
+.g-recaptcha {
+    transform-origin: left top;
+    transform: scale(0.95);
 }

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Permissions Authentication</title>
     <link rel="stylesheet" href="css/style.css">
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body>
     <div class="auth-container">
@@ -28,6 +29,14 @@
                     <div class="password-input">
                         <input type="password" id="password" name="password" required>
                         <button type="button" class="toggle-password">👁️</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div id="recaptcha-container" style="display: none;">
+                        <div class="g-recaptcha" 
+                             data-sitekey="YOUR_SITE_KEY" 
+                             data-callback="onCaptchaSuccess">
+                        </div>
                     </div>
                 </div>
                 <button type="submit" class="btn">Login</button>
