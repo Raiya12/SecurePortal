@@ -1,5 +1,8 @@
 // This file contains the JavaScript logic for handling user authentication.
 
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 3 * 60 * 1000; // 3 minutes in milliseconds
+
 document.addEventListener('DOMContentLoaded', function() {
     // Get all forms and sections
     const loginSection = document.getElementById('login-section');
@@ -92,8 +95,19 @@ document.addEventListener('DOMContentLoaded', function() {
     loginForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
+        const username = this.username.value;
         const section = this.closest('.auth-section');
         const role = section.querySelector('.role-btn.active')?.dataset.role;
+
+        // Check if user is locked out
+        const lockoutStatus = isUserLockedOut(username);
+        if (lockoutStatus.locked) {
+            showError(
+                this.username, 
+                `Account is temporarily locked. Please try again in ${Math.ceil(lockoutStatus.remainingSeconds / 60)} minutes.`
+            );
+            return;
+        }
 
         if (!role) {
             showError(this.username, 'Please select a role');
@@ -103,14 +117,33 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const users = JSON.parse(localStorage.getItem('users') || '[]');
             const user = users.find(u => 
-                (u.username === this.username.value || u.email === this.username.value) && 
+                (u.username === username || u.email === username) && 
                 u.password === this.password.value &&
                 u.role === role
             );
 
             if (!user) {
-                throw new Error('Invalid credentials or role');
+                // Handle failed login attempt
+                const rateData = getRateLimitData(username);
+                rateData.attempts += 1;
+
+                if (rateData.attempts >= MAX_LOGIN_ATTEMPTS) {
+                    rateData.lockoutUntil = new Date().getTime() + LOCKOUT_DURATION;
+                    updateRateLimitData(username, rateData);
+                    showError(
+                        this.username, 
+                        `Too many failed attempts. Account locked for ${LOCKOUT_DURATION/60000} minutes.`
+                    );
+                    return;
+                }
+
+                updateRateLimitData(username, rateData);
+                const remainingAttempts = MAX_LOGIN_ATTEMPTS - rateData.attempts;
+                throw new Error(`Invalid credentials. ${remainingAttempts} attempts remaining.`);
             }
+
+            // Successful login - reset rate limiting data
+            updateRateLimitData(username, { attempts: 0, lockoutUntil: null });
 
             // Store user data in localStorage
             localStorage.setItem('currentUser', JSON.stringify({
@@ -121,7 +154,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }));
 
             showSuccess('Login successful!');
-            // Redirect to index.html after successful login
             setTimeout(() => {
                 window.location.href = 'index.html';
             }, 1000);
@@ -235,6 +267,29 @@ document.addEventListener('DOMContentLoaded', function() {
             isValid: errors.length === 0,
             errors: errors
         };
+    }
+
+    function getRateLimitData(username) {
+        const rateLimitData = JSON.parse(localStorage.getItem('rateLimitData') || '{}');
+        return rateLimitData[username] || { attempts: 0, lockoutUntil: null };
+    }
+
+    function updateRateLimitData(username, data) {
+        const rateLimitData = JSON.parse(localStorage.getItem('rateLimitData') || '{}');
+        rateLimitData[username] = data;
+        localStorage.setItem('rateLimitData', JSON.stringify(rateLimitData));
+    }
+
+    function isUserLockedOut(username) {
+        const data = getRateLimitData(username);
+        if (data.lockoutUntil && new Date().getTime() < data.lockoutUntil) {
+            const remainingTime = Math.ceil((data.lockoutUntil - new Date().getTime()) / 1000);
+            return {
+                locked: true,
+                remainingSeconds: remainingTime
+            };
+        }
+        return { locked: false };
     }
 
     // Initialize
