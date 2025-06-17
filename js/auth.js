@@ -132,11 +132,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const users = JSON.parse(localStorage.getItem('users') || '[]');
             const user = users.find(u => 
                 (u.username === username || u.email === username) && 
-                u.password === this.password.value &&
                 u.role === role
             );
 
-            if (!user) {
+            if (!user || !(await verifyPassword(this.password.value, user.passwordHash, user.passwordSalt))) {
                 // Handle failed login attempt
                 rateData.attempts += 1;
 
@@ -217,11 +216,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error('Email already registered');
             }
 
+            // Hash the password before storing
+            const { salt, hash } = await hashPassword(password);
+
             const newUser = {
                 id: generateUserId(),
                 username: this.name.value,
                 email: this.email.value,
-                password: password,
+                passwordHash: hash,
+                passwordSalt: salt,
                 role: role,
                 createdAt: new Date().toISOString()
             };
@@ -411,4 +414,52 @@ function setupInactivityCheck() {
 
     // Check inactivity on page load
     checkInactivity();
+}
+
+// Add these utility functions after the existing helper functions
+
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    
+    // Generate salt
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    
+    // Hash the password with salt
+    const hashBuffer = await crypto.subtle.digest(
+        'SHA-256',
+        new Uint8Array([...salt, ...data])
+    );
+    
+    // Convert hash to base64 string
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    // Return both salt and hash
+    return {
+        salt: saltHex,
+        hash: hashHex
+    };
+}
+
+async function verifyPassword(password, storedHash, storedSalt) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    
+    // Convert stored salt from hex to Uint8Array
+    const salt = new Uint8Array(storedSalt.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    
+    // Hash the password with stored salt
+    const hashBuffer = await crypto.subtle.digest(
+        'SHA-256',
+        new Uint8Array([...salt, ...data])
+    );
+    
+    // Convert hash to hex string
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    // Compare hashes
+    return hashHex === storedHash;
 }
